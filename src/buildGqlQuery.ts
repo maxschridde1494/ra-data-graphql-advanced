@@ -20,6 +20,7 @@ import * as gqlTypes from 'graphql-ast-types-browser';
 import getFinalType from './getFinalType';
 import isList from './isList';
 import isRequired from './isRequired';
+import { snakeToCamel } from './inflection'
 
 export default (introspectionResults: IntrospectionResult) => (
     resource: IntrospectedResource,
@@ -199,7 +200,7 @@ export const buildArgs = (
         k => typeof variables[k] !== 'undefined'
     );
     let args = query.args
-        .filter(a => validVariables.includes(a.name))
+        .filter(a => validVariables.includes(a.name) || validVariables.includes(snakeToCamel(a.name)))
         .reduce(
             (acc, arg) => [
                 ...acc,
