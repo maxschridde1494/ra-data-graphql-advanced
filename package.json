@@ -28,10 +28,10 @@
     "license": "MIT",
     "scripts": {
         "build": "yarn run build-cjs && yarn run build-esm",
-        "build-cjs": "npx rimraf ./dist/cjs && tsc --outDir dist/cjs",
-        "build-esm": "npx rimraf ./dist/esm && tsc --outDir dist/esm --module es2015",
+        "build-cjs": "npx rimraf ./dist/cjs && npx tsc --outDir dist/cjs",
+        "build-esm": "npx rimraf ./dist/esm && npx tsc --outDir dist/esm --module es2015",
         "install": "yarn build",
-        "watch": "tsc --outDir dist/esm --module es2015 --watch"
+        "watch": "npx tsc --outDir dist/esm --module es2015 --watch"
     },
     "dependencies": {
         "@apollo/client": "^3.3.19",
