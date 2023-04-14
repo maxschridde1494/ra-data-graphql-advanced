@@ -1,7 +1,7 @@
 {
-    "name": "ra-data-graphql-simple",
+    "name": "ra-data-graphql-advanced",
     "version": "4.8.4",
-    "description": "A GraphQL simple data provider for react-admin",
+    "description": "A GraphQL advanced data provider for react-admin",
     "main": "dist/cjs/index.js",
     "module": "dist/esm/index.js",
     "types": "dist/cjs/index.d.ts",
