@@ -228,7 +228,7 @@ export const buildApolloArgs = (
     );
 
     let args = query.args
-        .filter(a => validVariables.includes(a.name))
+        .filter(a => validVariables.includes(a.name) || validVariables.includes(snakeToCamel(a.name)))
         .reduce((acc, arg) => {
             return [
                 ...acc,
