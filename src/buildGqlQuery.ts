@@ -36,7 +36,7 @@ export default (introspectionResults: IntrospectionResult) => (
     if (variables.sparse_fields){
         const associations = variables.sparse_fields.filter(f => f.includes('.')).map(f => f.split('.')[0])
         const uniqueAssociations: string[] = [...new Set(associations)] as string[]
-        uniqueAssociations.forEach(a => relatedSparseFields[a] = variables.sparse_fields.filter(f => f.includes(`${a}.`).map(f => f.split('.')[1])))
+        uniqueAssociations.forEach(a => relatedSparseFields[a] = variables.sparse_fields.filter(f => f.includes(`${a}.`)).map(f => f.split('.')[1]))
         resourceFields = resource.type.fields.filter(f => variables.sparse_fields.includes(f.name) || uniqueAssociations.includes(f.name))
     } else {
         resourceFields = resource.type.fields
