@@ -32,7 +32,16 @@ export default (introspectionResults: IntrospectionResult) => (
     const apolloArgs = buildApolloArgs(queryType, variables);
     const args = buildArgs(queryType, variables);
     const metaArgs = buildArgs(queryType, metaVariables);
-    const fields = buildFields(introspectionResults)(variables.sparse_fields ? resource.type.fields.filter(f => variables.sparse_fields.includes(f.name)) : resource.type.fields);
+    let resourceFields, relatedSparseFields
+    if (variables.sparse_fields){
+        const associations = variables.sparse_fields.filter(f => f.includes('.')).map(f => f.split('.')[0])
+        const uniqueAssociations: string[] = [...new Set(associations)] as string[]
+        uniqueAssociations.forEach(a => relatedSparseFields[a] = variables.sparse_fields.filter(f => f.include(`${a}.`).map(f => f.split('.')[1])))
+        resourceFields = resource.type.fields.filter(f => variables.sparse_fields.includes(f.name) || uniqueAssociations.includes(f.name))
+    } else {
+        resourceFields = resource.type.fields
+    }
+    const fields = buildFields(introspectionResults)(resourceFields, relatedSparseFields);
 
     if (
         raFetchMethod === GET_LIST ||
@@ -106,7 +115,7 @@ export default (introspectionResults: IntrospectionResult) => (
 export const buildFields = (
     introspectionResults: IntrospectionResult,
     paths = []
-) => fields =>
+) => (fields, relatedSparseFields = null) =>
     fields.reduce((acc, field) => {
         const type = getFinalType(field.type);
 
@@ -123,6 +132,7 @@ export const buildFields = (
         );
 
         if (linkedResource) {
+            const linkedResourceFields = relatedSparseFields ? buildFields(introspectionResults)(linkedResource.type.fields.filter(f => relatedSparseFields[field.name].includes(f.name))) : buildFields(introspectionResults)(linkedResource.type.fields)
             return [
                 ...acc,
                 gqlTypes.field(
@@ -131,7 +141,7 @@ export const buildFields = (
                     null,
                     null,
                     // gqlTypes.selectionSet([gqlTypes.field(gqlTypes.name('id'))])
-                    gqlTypes.selectionSet(buildFields(introspectionResults)(linkedResource.type.fields))
+                    gqlTypes.selectionSet(linkedResourceFields)
                 ),
             ];
         }
