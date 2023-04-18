@@ -130,7 +130,8 @@ export const buildFields = (
                     null,
                     null,
                     null,
-                    gqlTypes.selectionSet([gqlTypes.field(gqlTypes.name('id'))])
+                    // gqlTypes.selectionSet([gqlTypes.field(gqlTypes.name('id'))])
+                    gqlTypes.selectionSet(buildFields(introspectionResults)(linkedResource.type.fields))
                 ),
             ];
         }
