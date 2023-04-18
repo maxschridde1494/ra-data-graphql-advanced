@@ -188,6 +188,7 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
         perPage: number;
         sortField: string;
         sortOrder: string;
+        sparse_fields?: string[];
     }> = { filter: {} };
     if (params.filter) {
         variables.filter = Object.keys(params.filter).reduce((acc, key) => {
@@ -284,6 +285,8 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
         variables.sortField = params.sort.field;
         variables.sortOrder = params.sort.order;
     }
+
+    if (params.sparse_fields) variables.sparse_fields = params.sparse_fields
 
     return variables;
 };
