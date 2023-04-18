@@ -32,7 +32,7 @@ export default (introspectionResults: IntrospectionResult) => (
     const apolloArgs = buildApolloArgs(queryType, variables);
     const args = buildArgs(queryType, variables);
     const metaArgs = buildArgs(queryType, metaVariables);
-    const fields = buildFields(introspectionResults)(resource.type.fields);
+    const fields = buildFields(introspectionResults)(variables.sparse_fields ? resource.type.fields.filter(f => variables.sparse_fields.includes(f.name)) : resource.type.fields);
 
     if (
         raFetchMethod === GET_LIST ||
