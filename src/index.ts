@@ -7,6 +7,8 @@ const defaultOptions = {
     buildQuery: defaultBuildQuery,
 };
 
+export { introspectSchema } from 'ra-data-graphql'
+
 export const buildQuery = defaultBuildQuery;
 
 export default (
