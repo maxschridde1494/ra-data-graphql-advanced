@@ -1,13 +1,30 @@
 import merge from 'lodash/merge';
 import buildDataProvider, { BuildQueryFactory, Options, introspectSchema, IntrospectionOptions } from 'ra-data-graphql';
-import { DataProvider, Identifier } from 'ra-core';
+import { DataProvider, Identifier, GET_LIST, GET_ONE, GET_MANY, GET_MANY_REFERENCE, CREATE, UPDATE, DELETE } from 'ra-core';
+import pluralize from 'pluralize';
 
 import defaultBuildQuery from './buildQuery';
+
+const defaultIntrospection = {
+    operationNames: {
+        [GET_LIST]: resource => `all${pluralize(resource.name)}`,
+        [GET_ONE]: resource => `${resource.name}`,
+        [GET_MANY]: resource => `all${pluralize(resource.name)}`,
+        [GET_MANY_REFERENCE]: resource => `all${pluralize(resource.name)}`,
+        [CREATE]: resource => `create${resource.name}`,
+        [UPDATE]: resource => `update${resource.name}`,
+        [DELETE]: resource => `delete${resource.name}`,
+    },
+    exclude: undefined,
+    include: undefined,
+}
+
 const defaultOptions = {
     buildQuery: defaultBuildQuery,
+    introspection: defaultIntrospection
 };
 
-export { introspectSchema, IntrospectionOptions }
+export { introspectSchema, IntrospectionOptions, defaultIntrospection }
 
 export const buildQuery = defaultBuildQuery;
 
