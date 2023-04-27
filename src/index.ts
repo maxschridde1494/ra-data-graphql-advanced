@@ -1,5 +1,5 @@
 import merge from 'lodash/merge';
-import buildDataProvider, { BuildQueryFactory, Options } from 'ra-data-graphql';
+import buildDataProvider, { BuildQueryFactory, Options, introspectSchema } from 'ra-data-graphql';
 import { DataProvider, Identifier } from 'ra-core';
 
 import defaultBuildQuery from './buildQuery';
@@ -12,7 +12,7 @@ export { introspectSchema } from 'ra-data-graphql'
 export const buildQuery = defaultBuildQuery;
 
 export default (
-    options: Omit<Options, 'buildQuery'> & { buildQuery?: BuildQueryFactory }
+    options: Omit<Options, 'buildQuery'> & { buildQuery?: BuildQueryFactory; resolveIntrospection?: typeof introspectSchema }
 ): Promise<DataProvider> => {
     return buildDataProvider(merge({}, defaultOptions, options)).then(
         defaultDataProvider => {
