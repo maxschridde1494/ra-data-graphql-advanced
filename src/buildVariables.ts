@@ -286,7 +286,7 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
         variables.sortOrder = params.sort.order;
     }
 
-    if (params.sparse_fields) variables.sparse_fields = params.sparse_fields
+    if (params.meta?.sparse_fields) variables.sparse_fields = params.meta.sparse_fields
 
     return variables;
 };
