@@ -21,7 +21,8 @@ const defaultIntrospection = {
 
 const defaultOptions = {
     buildQuery: defaultBuildQuery,
-    introspection: defaultIntrospection
+    introspection: defaultIntrospection,
+    // defaultFieldsResolutionTypes: [TypeKind.SCALAR] // TODO ideally this is parametric, but this will require modifications to the underlying ra-data-graphql buildDataProvider 
 };
 
 export { introspectSchema, IntrospectionOptions, defaultIntrospection }

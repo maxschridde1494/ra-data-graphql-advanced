@@ -22,6 +22,14 @@ import isList from './isList';
 import isRequired from './isRequired';
 import { snakeToCamel } from './inflection'
 
+const defaultFieldsResolutionTypes = [TypeKind.SCALAR] // unless sparse fields are specified, default fields requested in queries / mutations will be scalars only
+
+function getType(fieldType) {
+    if (fieldType.ofType == null) return fieldType.kind
+
+    return getType(fieldType.ofType)
+}
+
 export default (introspectionResults: IntrospectionResult) => (
     resource: IntrospectedResource,
     raFetchMethod: string,
@@ -44,7 +52,7 @@ export default (introspectionResults: IntrospectionResult) => (
             resourceFields = [...resourceFields, ...resource.type.fields.filter(f => uniqueAssociations.includes(f.name))]
         }
     } else {
-        resourceFields = resource.type.fields
+        resourceFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
     }
     const fields = buildFields(introspectionResults)(resourceFields, relatedSparseFields);
 
