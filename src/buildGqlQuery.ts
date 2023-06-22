@@ -58,12 +58,12 @@ export default (introspectionResults: IntrospectionResult) => (
     const metaArgs = buildArgs(queryType, metaVariables);
 
     let resourceFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
-    
+
     let fields;
 
     if (variables.extra_fields || variables.sparse_fields){
         const { fields: requestedFields, associationFields } = processRequestedFields(resource.type.fields, variables.extra_fields || variables.sparse_fields)
-        if (variables.extra_fields) resourceFields = [...resourceFields, requestedFields]
+        if (variables.extra_fields) resourceFields = [...resourceFields, ...requestedFields]
         else resourceFields = requestedFields // sparse fields overrides
 
         fields = buildFields(introspectionResults)(resourceFields, associationFields);
