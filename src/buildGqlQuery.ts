@@ -30,6 +30,22 @@ function getType(fieldType) {
     return getType(fieldType.ofType)
 }
 
+function processRequestedFields(availFields, attrs) {
+    const resourceAttrs = attrs.filter(attr => !attr.includes('.'))
+    const associationAttrs = attrs.filter(attr => !resourceAttrs.includes(attr))
+    // naive association parsing. only one level deep for now
+    const associations = [...new Set(associationAttrs.map(f => f.split('.')[0]))] as string[]
+
+    let fields = availFields.filter(f => resourceAttrs.includes(f.name) || associations.includes(f.name))
+
+    const associationFields = {}
+    associations.forEach(association => {
+        associationFields[association] = associationAttrs.filter(attr => attr.startsWith(association)).map(attr => attr.split('.')[1])
+    })
+
+    return { fields, associationFields }
+}
+
 export default (introspectionResults: IntrospectionResult) => (
     resource: IntrospectedResource,
     raFetchMethod: string,
@@ -40,21 +56,18 @@ export default (introspectionResults: IntrospectionResult) => (
     const apolloArgs = buildApolloArgs(queryType, variables);
     const args = buildArgs(queryType, variables);
     const metaArgs = buildArgs(queryType, metaVariables);
-    let resourceFields, relatedSparseFields
-    if (variables.sparse_fields){
-        resourceFields = resource.type.fields.filter(f => variables.sparse_fields.includes(f.name))
 
-        const associations = variables.sparse_fields.filter(f => f.includes('.')).map(f => f.split('.')[0])
-        if (associations.length > 0){
-            relatedSparseFields = {}
-            const uniqueAssociations: string[] = [...new Set(associations)] as string[]
-            uniqueAssociations.forEach(a => relatedSparseFields[a] = variables.sparse_fields.filter(f => f.includes(`${a}.`)).map(f => f.split('.')[1]))
-            resourceFields = [...resourceFields, ...resource.type.fields.filter(f => uniqueAssociations.includes(f.name))]
-        }
-    } else {
-        resourceFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
-    }
-    const fields = buildFields(introspectionResults)(resourceFields, relatedSparseFields);
+    let resourceFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
+    
+    let fields;
+
+    if (variables.extra_fields || variables.sparse_fields){
+        const { fields: requestedFields, associationFields } = processRequestedFields(resource.type.fields, variables.extra_fields || variables.sparse_fields)
+        if (variables.extra_fields) resourceFields = [...resourceFields, requestedFields]
+        else resourceFields = requestedFields // sparse fields overrides
+
+        fields = buildFields(introspectionResults)(resourceFields, associationFields);
+    } else fields = buildFields(introspectionResults)(resourceFields);
 
     if (
         raFetchMethod === GET_LIST ||
@@ -128,7 +141,7 @@ export default (introspectionResults: IntrospectionResult) => (
 export const buildFields = (
     introspectionResults: IntrospectionResult,
     paths = []
-) => (fields, relatedSparseFields = null) =>
+) => (fields, associationFields = null) =>
     fields.reduce((acc, field) => {
         const type = getFinalType(field.type);
 
@@ -145,7 +158,7 @@ export const buildFields = (
         );
 
         if (linkedResource) {
-            const linkedResourceFields = relatedSparseFields ? buildFields(introspectionResults)(linkedResource.type.fields.filter(f => relatedSparseFields[field.name].includes(f.name))) : buildFields(introspectionResults)(linkedResource.type.fields)
+            const linkedResourceFields = associationFields ? buildFields(introspectionResults)(linkedResource.type.fields.filter(f => associationFields[field.name].includes(f.name))) : buildFields(introspectionResults)(linkedResource.type.fields)
             return [
                 ...acc,
                 gqlTypes.field(
