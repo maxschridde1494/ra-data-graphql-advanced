@@ -59,8 +59,7 @@ export default (introspectionResults: IntrospectionResult) => (
             return variables;
         }
         case GET_ONE:
-            const { meta, ...params } = preparedParams
-            return { ...params, ...meta?.params }
+            return preparedParams
         case DELETE:
             return {
                 id: preparedParams.id,

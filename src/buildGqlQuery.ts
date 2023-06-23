@@ -57,14 +57,20 @@ export default (introspectionResults: IntrospectionResult) => (
     queryType: IntrospectionField,
     variables: any
 ) => {
-    const { sortField, sortOrder, extra_fields: extraFields, sparse_fields: sparseFields, ...metaVariables } = variables;
+    let { sortField, sortOrder, ...metaVariables } = variables;
+
+    const defaultFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
+    const extraFields = metaVariables.meta?.extra_fields
+    const sparseFields = metaVariables.meta?.sparse_fields
+
+    const fields = buildFields(introspectionResults)({ resource, defaultFields, extraFields, sparseFields })
+
+    if (extraFields) delete metaVariables.meta.extra_fields
+    if (sparseFields) delete metaVariables.meta.sparse_fields
+
     const apolloArgs = buildApolloArgs(queryType, variables);
     const args = buildArgs(queryType, variables);
     const metaArgs = buildArgs(queryType, metaVariables);
-
-    const defaultFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
-
-    const fields = buildFields(introspectionResults)({ resource, defaultFields, extraFields, sparseFields })
 
     if (
         raFetchMethod === GET_LIST ||
