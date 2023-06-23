@@ -189,6 +189,7 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
         perPage: number;
         sortField: string;
         sortOrder: string;
+        meta?: object
     }> = { filter: {} };
     if (params.filter) {
         variables.filter = Object.keys(params.filter).reduce((acc, key) => {
@@ -286,7 +287,7 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
         variables.sortOrder = params.sort.order;
     }
 
-    if (params.meta) variables = { ...variables, ...params.meta }
+    if (params.meta) variables = { ...variables, meta: params.meta }
 
     return variables;
 };
