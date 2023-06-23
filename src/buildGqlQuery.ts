@@ -24,26 +24,31 @@ import { snakeToCamel } from './inflection'
 
 const defaultFieldsResolutionTypes = [TypeKind.SCALAR] // unless sparse fields are specified, default fields requested in queries / mutations will be scalars only
 
+// let extra_fields = [
+//     'currency', 
+//     'price',
+//     {
+//         leaderships: [
+//             'id',
+//             { leadership_position: ['name', 'status'] },
+//             { user: ['name']}
+//         ]
+//     }
+// ]
+
 function getType(fieldType) {
     if (fieldType.ofType == null) return fieldType.kind
 
     return getType(fieldType.ofType)
 }
 
-function processRequestedFields(availFields, attrs) {
-    const resourceAttrs = attrs.filter(attr => !attr.includes('.'))
-    const associationAttrs = attrs.filter(attr => !resourceAttrs.includes(attr))
-    // naive association parsing. only one level deep for now
-    const associations = [...new Set(associationAttrs.map(f => f.split('.')[0]))] as string[]
+type RequestedFields = (string | {[k: string]: RequestedFields })[]
 
-    let fields = availFields.filter(f => resourceAttrs.includes(f.name) || associations.includes(f.name))
-
-    const associationFields = {}
-    associations.forEach(association => {
-        associationFields[association] = associationAttrs.filter(attr => attr.startsWith(association)).map(attr => attr.split('.')[1])
-    })
-
-    return { fields, associationFields }
+function processRequestedFields(availFields, requestedFields) {
+    const resourceAttrs = requestedFields.map(attr => typeof attr == 'string' ? attr : Object.keys(attr)[0] )
+    const associationAttrs = requestedFields.filter(attr => typeof attr != 'string' && resourceAttrs.includes(Object.keys(attr)[0]))
+    const fields = availFields.filter(f => resourceAttrs.includes(f.name))
+    return { fields, associationAttrs }
 }
 
 export default (introspectionResults: IntrospectionResult) => (
@@ -52,22 +57,14 @@ export default (introspectionResults: IntrospectionResult) => (
     queryType: IntrospectionField,
     variables: any
 ) => {
-    const { sortField, sortOrder, ...metaVariables } = variables;
+    const { sortField, sortOrder, extra_fields: extraFields, sparse_fields: sparseFields, ...metaVariables } = variables;
     const apolloArgs = buildApolloArgs(queryType, variables);
     const args = buildArgs(queryType, variables);
     const metaArgs = buildArgs(queryType, metaVariables);
 
-    let resourceFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
+    const defaultFields = resource.type.fields.filter(field => defaultFieldsResolutionTypes.includes(getType(field.type)))
 
-    let fields;
-
-    if (variables.extra_fields || variables.sparse_fields){
-        const { fields: requestedFields, associationFields } = processRequestedFields(resource.type.fields, variables.extra_fields || variables.sparse_fields)
-        if (variables.extra_fields) resourceFields = [...resourceFields, ...requestedFields]
-        else resourceFields = requestedFields // sparse fields overrides
-
-        fields = buildFields(introspectionResults)(resourceFields, associationFields);
-    } else fields = buildFields(introspectionResults)(resourceFields);
+    const fields = buildFields(introspectionResults)({ resource, defaultFields, extraFields, sparseFields })
 
     if (
         raFetchMethod === GET_LIST ||
@@ -141,8 +138,20 @@ export default (introspectionResults: IntrospectionResult) => (
 export const buildFields = (
     introspectionResults: IntrospectionResult,
     paths = []
-) => (fields, associationFields = null) =>
-    fields.reduce((acc, field) => {
+) => ({ resource, defaultFields = [], extraFields, sparseFields }: { resource?: IntrospectedResource, defaultFields?: readonly IntrospectionField[], extraFields?: RequestedFields, sparseFields?: RequestedFields }) =>{
+    let fields = defaultFields
+    let associations;
+
+    if (extraFields || sparseFields){
+        const { fields: requestedFields, associationAttrs } = processRequestedFields(resource.type.fields, extraFields || sparseFields)
+
+        if (extraFields) fields = [...fields, ...requestedFields]
+        else fields = requestedFields
+
+        associations = associationAttrs
+    }
+    
+    return fields.reduce((acc, field) => {
         const type = getFinalType(field.type);
 
         if (type.name.startsWith('_')) {
@@ -158,7 +167,14 @@ export const buildFields = (
         );
 
         if (linkedResource) {
-            const linkedResourceFields = associationFields ? buildFields(introspectionResults)(linkedResource.type.fields.filter(f => associationFields[field.name].includes(f.name))) : buildFields(introspectionResults)(linkedResource.type.fields)
+            let linkedResourceFields;
+            if (associations) {
+                const linkedRequestedFields = associations.find(assoc => Object.keys(assoc)[0] == field.name)[field.name]
+                linkedResourceFields = buildFields(introspectionResults)({ resource: linkedResource, sparseFields: linkedRequestedFields })
+            } else {
+                linkedResourceFields = buildFields(introspectionResults)({ resource: linkedResource, defaultFields: linkedResource.type.fields})
+            }
+
             return [
                 ...acc,
                 gqlTypes.field(
@@ -191,7 +207,7 @@ export const buildFields = (
                         ...buildFields(introspectionResults, [
                             ...paths,
                             linkedType.name,
-                        ])((linkedType as IntrospectionObjectType).fields),
+                        ])({ defaultFields: (linkedType as IntrospectionObjectType).fields}),
                     ])
                 ),
             ];
@@ -201,6 +217,7 @@ export const buildFields = (
         // ending with endless circular dependencies
         return acc;
     }, []);
+}
 
 export const buildFragments = (introspectionResults: IntrospectionResult) => (
     possibleTypes: readonly IntrospectionNamedTypeRef<IntrospectionObjectType>[]
@@ -217,7 +234,7 @@ export const buildFragments = (introspectionResults: IntrospectionResult) => (
             gqlTypes.inlineFragment(
                 gqlTypes.selectionSet(
                     buildFields(introspectionResults)(
-                        (linkedType as IntrospectionObjectType).fields
+                        { defaultFields: (linkedType as IntrospectionObjectType).fields}
                     )
                 ),
                 gqlTypes.namedType(gqlTypes.name(type.name))
