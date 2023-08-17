@@ -3,7 +3,7 @@ import buildVariables from './buildVariables';
 import buildGqlQuery from './buildGqlQuery';
 import getResponseParser from './getResponseParser';
 
-export const buildQueryFactory = (
+export const buildQueryFactory: any = (
     buildVariablesImpl = buildVariables,
     buildGqlQueryImpl = buildGqlQuery,
     getResponseParserImpl = getResponseParser
