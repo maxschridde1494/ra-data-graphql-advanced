@@ -41,10 +41,18 @@ export default (introspectionResults: IntrospectionResult) => (
             );
         }
         case GET_MANY:
-            return {
-                filter: { ids: preparedParams.ids },
-                ...preparedParams
-            };
+            const variables = buildGetListVariables(introspectionResults)(
+                resource,
+                raFetchMethod,
+                preparedParams
+                );
+            
+            variables.filter = {
+                ...variables.filter,
+                ids: preparedParams.ids,
+            }
+            
+            return variables
         case GET_MANY_REFERENCE: {
             let variables = buildGetListVariables(introspectionResults)(
                 resource,
