@@ -1,5 +1,5 @@
 {
-    "name": "ra-data-graphql-advanced",
+    "name": "@moonlight-labs/ra-data-graphql-advanced",
     "version": "4.8.4",
     "description": "A GraphQL advanced data provider for react-admin",
     "main": "dist/cjs/index.js",
