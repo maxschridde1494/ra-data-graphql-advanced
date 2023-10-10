@@ -1,6 +1,6 @@
 {
     "name": "@moonlight-labs/ra-data-graphql-advanced",
-    "version": "4.8.4",
+    "version": "4.8.5",
     "description": "A GraphQL advanced data provider for react-admin",
     "main": "dist/cjs/index.js",
     "module": "dist/esm/index.js",
@@ -47,9 +47,9 @@
     "devDependencies": {
         "cross-env": "^5.2.0",
         "graphql": "^15.6.0",
+        "ra-core": "^4.0.0",
         "rimraf": "^3.0.2",
-        "typescript": "^4.4.0",
-        "ra-core": "^4.0.0"
+        "typescript": "^4.4.0"
     },
     "gitHead": "8748248e40742bbd367338e0573a00213e17d3ab"
 }
