@@ -14,6 +14,7 @@ import {
     CREATE,
     UPDATE,
     DELETE,
+    DELETE_MANY
 } from 'ra-core';
 import { IntrospectionResult, IntrospectedResource } from 'ra-data-graphql';
 
@@ -73,6 +74,8 @@ export default (introspectionResults: IntrospectionResult) => (
             return {
                 id: preparedParams.id,
             };
+        case DELETE_MANY:
+            return preparedParams
         case CREATE:
         case UPDATE: {
             return buildCreateUpdateVariables(
