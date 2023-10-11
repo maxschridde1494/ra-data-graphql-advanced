@@ -21,20 +21,9 @@ import getFinalType from './getFinalType';
 import isList from './isList';
 import isRequired from './isRequired';
 import { snakeToCamel } from './inflection'
+import { FieldNamingConventions, resourceNameWithNameConvention } from '.'
 
 const defaultFieldsResolutionTypes = [TypeKind.SCALAR] // unless sparse fields are specified, default fields requested in queries / mutations will be scalars only
-
-// let extra_fields = [
-//     'currency', 
-//     'price',
-//     {
-//         leaderships: [
-//             'id',
-//             { leadership_position: ['name', 'status'] },
-//             { user: ['name']}
-//         ]
-//     }
-// ]
 
 function getType(fieldType) {
     if (fieldType.ofType == null) return fieldType.kind
@@ -51,7 +40,7 @@ function processRequestedFields(availFields, requestedFields) {
     return { fields, associationAttrs }
 }
 
-export default (introspectionResults: IntrospectionResult) => (
+export default (introspectionResults: IntrospectionResult, fieldNamingConvention?: FieldNamingConventions) => (
     resource: IntrospectedResource,
     raFetchMethod: string,
     queryType: IntrospectionField,
@@ -89,7 +78,7 @@ export default (introspectionResults: IntrospectionResult) => (
                         gqlTypes.selectionSet(fields)
                     ),
                     gqlTypes.field(
-                        gqlTypes.name(`_${queryType.name}Meta`),
+                        gqlTypes.name(`_${queryType.name}${resourceNameWithNameConvention('Meta', fieldNamingConvention)}`),
                         gqlTypes.name('total'),
                         metaArgs,
                         null,

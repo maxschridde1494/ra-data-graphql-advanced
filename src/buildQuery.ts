@@ -2,12 +2,13 @@ import { IntrospectionResult, BuildQuery } from 'ra-data-graphql';
 import buildVariables from './buildVariables';
 import buildGqlQuery from './buildGqlQuery';
 import getResponseParser from './getResponseParser';
+import { FieldNamingConventions } from '.';
 
 export const buildQueryFactory: any = (
     buildVariablesImpl = buildVariables,
     buildGqlQueryImpl = buildGqlQuery,
     getResponseParserImpl = getResponseParser
-) => (introspectionResults: IntrospectionResult): BuildQuery => {
+) => (introspectionResults: IntrospectionResult, fieldNamingConvention?: FieldNamingConventions): BuildQuery => {
     const knownResources = introspectionResults.resources.map(r => r.type.name);
 
     const buildQuery: BuildQuery = (raFetchType, resourceName, params) => {
@@ -31,13 +32,13 @@ export const buildQueryFactory: any = (
             );
         }
 
-        const variables = buildVariablesImpl(introspectionResults)(
+        const variables = buildVariablesImpl(introspectionResults, fieldNamingConvention)(
             resource,
             raFetchType,
             params,
             queryType
         );
-        const query = buildGqlQueryImpl(introspectionResults)(
+        const query = buildGqlQueryImpl(introspectionResults, fieldNamingConvention)(
             resource,
             raFetchType,
             queryType,

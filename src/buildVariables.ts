@@ -20,8 +20,9 @@ import { IntrospectionResult, IntrospectedResource } from 'ra-data-graphql';
 
 import getFinalType from './getFinalType';
 import isList from './isList';
+import { FieldNamingConventions, strWithNameConvention } from '.';
 
-export default (introspectionResults: IntrospectionResult) => (
+export default (introspectionResults: IntrospectionResult, fieldNamingConvention?: FieldNamingConventions) => (
     resource: IntrospectedResource,
     raFetchMethod: string,
     params: any,
@@ -35,14 +36,14 @@ export default (introspectionResults: IntrospectionResult) => (
 
     switch (raFetchMethod) {
         case GET_LIST: {
-            return buildGetListVariables(introspectionResults)(
+            return buildGetListVariables(introspectionResults, fieldNamingConvention)(
                 resource,
                 raFetchMethod,
                 preparedParams
             );
         }
         case GET_MANY:
-            const variables = buildGetListVariables(introspectionResults)(
+            const variables = buildGetListVariables(introspectionResults, fieldNamingConvention)(
                 resource,
                 raFetchMethod,
                 preparedParams
@@ -55,7 +56,7 @@ export default (introspectionResults: IntrospectionResult) => (
             
             return variables
         case GET_MANY_REFERENCE: {
-            let variables = buildGetListVariables(introspectionResults)(
+            let variables = buildGetListVariables(introspectionResults, fieldNamingConvention)(
                 resource,
                 raFetchMethod,
                 preparedParams
@@ -190,17 +191,19 @@ const prepareParams = (
     return result;
 };
 
-const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
+const buildGetListVariables = (introspectionResults: IntrospectionResult, fieldNamingConvention?: FieldNamingConventions) => (
     resource: IntrospectedResource,
     raFetchMethod: string,
     params: any
 ) => {
+    const perPageKey = strWithNameConvention('perPage', fieldNamingConvention)
+    const sortFieldKey = strWithNameConvention('sortField', fieldNamingConvention)
+    const sortOrderKey = strWithNameConvention('sortOrder', fieldNamingConvention)
+
     let variables: Partial<{
         filter: { [key: string]: any };
-        page: number;
-        perPage: number;
-        sortField: string;
-        sortOrder: string;
+        pagination: { [key: string]: number};
+        sort: { [key: string]: number};
         meta?: object
     }> = { filter: {} };
     if (params.filter) {
@@ -290,14 +293,18 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult) => (
     }
 
     if (params.pagination) {
-        variables.page = parseInt(params.pagination.page, 10) - 1;
-        variables.perPage = parseInt(params.pagination.perPage, 10);
+        variables.pagination.page = parseInt(params.pagination.page, 10) - 1;
+        variables.pagination[perPageKey] = parseInt(params.pagination.perPage, 10);
     }
 
     if (params.sort) {
-        variables.sortField = params.sort.field;
-        variables.sortOrder = params.sort.order;
+        variables.sort[sortFieldKey] = params.sort.field;
+        variables.sort[sortOrderKey] = params.sort.order;
     }
+
+    variables = { ...variables, ...variables.pagination, ...variables.sort };
+    delete variables.pagination;
+    delete variables.sort;
 
     if (params.meta) variables = { ...variables, meta: params.meta }
 
