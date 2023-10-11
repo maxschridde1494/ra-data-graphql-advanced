@@ -292,15 +292,17 @@ const buildGetListVariables = (introspectionResults: IntrospectionResult, fieldN
         }, {});
     }
 
-    if (params.pagination) {
-        variables.pagination.page = parseInt(params.pagination.page, 10) - 1;
-        variables.pagination[perPageKey] = parseInt(params.pagination.perPage, 10);
-    }
+    if (params.pagination)
+        variables.pagination = {
+            page: parseInt(params.pagination.page, 10) - 1,
+            [perPageKey]: parseInt(params.pagination.perPage, 10),
+        };
 
-    if (params.sort) {
-        variables.sort[sortFieldKey] = params.sort.field;
-        variables.sort[sortOrderKey] = params.sort.order;
-    }
+    if (params.sort)
+        variables.sort = {
+            [sortFieldKey]: params.sort.field,
+            [sortOrderKey]: params.sort.order
+        }
 
     variables = { ...variables, ...variables.pagination, ...variables.sort };
     delete variables.pagination;

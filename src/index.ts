@@ -1,5 +1,5 @@
 import merge from 'lodash/merge';
-import buildDataProvider, { BuildQueryFactory, Options, introspectSchema, IntrospectionOptions } from 'ra-data-graphql';
+import buildDataProvider, { BuildQueryFactory, Options, introspectSchema, IntrospectionOptions, IntrospectionResult } from 'ra-data-graphql';
 import { DataProvider, Identifier, GET_LIST, GET_ONE, GET_MANY, GET_MANY_REFERENCE, CREATE, UPDATE, DELETE, DELETE_MANY } from 'ra-core';
 import pluralize from 'pluralize';
 
@@ -53,7 +53,16 @@ export default (
     options: DataProviderOptions
 ): Promise<DataProvider> => {
     const { dataProviderExtensions, fieldNamingConvention, ...customOptions } = options;
-    return buildDataProvider(merge({}, { buildQuery, introspection: buildIntrospection(fieldNamingConvention) }, customOptions)).then(
+    const dataProviderParams = merge(
+        {}, 
+        { 
+            buildQuery: (introspectionResults: IntrospectionResult) => buildQuery(introspectionResults, fieldNamingConvention), 
+            introspection: buildIntrospection(fieldNamingConvention) 
+        }, 
+        customOptions
+    )
+    
+    return buildDataProvider(dataProviderParams).then(
         defaultDataProvider => {
             return {
                 ...defaultDataProvider,
