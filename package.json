@@ -1,21 +1,33 @@
 {
     "name": "@moonlight-labs/ra-data-graphql-advanced",
-    "version": "4.8.5",
+    "version": "4.8.6",
     "description": "A GraphQL advanced data provider for react-admin",
-    "main": "dist/cjs/index.js",
-    "module": "dist/esm/index.js",
-    "types": "dist/cjs/index.d.ts",
+    "type": "module",
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": "./dist/index.js"
+    },
+    "typesVersions": {
+        "*": {
+            "*": [
+                "./dist/*"
+            ]
+        }
+    },
     "sideEffects": false,
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/marmelab/react-admin.git"
+        "url": "git+https://github.com/maxschridde1494/ra-data-graphql-advanced.git"
     },
     "bugs": {
-        "url": "https://github.com/marmelab/react-admin/issues"
+        "url": "https://github.com/maxschridde1494/ra-data-graphql-advanced/issues"
     },
-    "homepage": "https://github.com/marmelab/react-admin#readme",
+    "homepage": "https://github.com/maxschridde1494/ra-data-graphql-advanced#readme",
     "authors": [
-        "Gildas Garcia"
+        "Gildas Garcia",
+        "Max Schridde"
     ],
     "keywords": [
         "reactjs",
@@ -27,11 +39,14 @@
     ],
     "license": "MIT",
     "scripts": {
-        "build": "yarn run build-cjs && yarn run build-esm",
-        "build-cjs": "npx rimraf ./dist/cjs && npx tsc --outDir dist/cjs",
-        "build-esm": "npx rimraf ./dist/esm && npx tsc --outDir dist/esm --module es2015",
-        "install": "yarn build",
-        "watch": "npx tsc --outDir dist/esm --module es2015 --watch"
+        "build": "yarn run build-esm",
+        "build-esm": "npx rimraf ./dist && npx tsc --outDir dist --module es2015",
+        "preversion": "yarn build",
+        "postversion": "yarn publish && echo \"Successfully released version $npm_package_version!\"",
+        "publish-patch": "yarn version --patch",
+        "publish-minor": "yarn version --minor",
+        "publish-major": "yarn version --major",
+        "watch": "npx tsc --outDir dist --module es2015 --watch"
     },
     "dependencies": {
         "@apollo/client": "^3.3.19",

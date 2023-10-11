@@ -1,4 +1,4 @@
-# ra-data-graphql-advanced
+# @moonlight-labs/ra-data-graphql-advanced
 
 A GraphQL data provider for [react-admin](https://github.com/marmelab/react-admin/)
 built with [Apollo](https://www.apollodata.com/) and tailored to target an advanced GraphQL implementation.
@@ -14,24 +14,24 @@ built with [Apollo](https://www.apollodata.com/) and tailored to target an advan
 Install with:
 
 ```sh
-npm install --save graphql ra-data-graphql-advanced
+npm install --save graphql @moonlight-labs/ra-data-graphql-advanced
 ```
 
 or
 
 ```sh
-yarn add graphql ra-data-graphql-advanced
+yarn add graphql @moonlight-labs/ra-data-graphql-advanced
 ```
 
 ## Usage
 
-The `ra-data-graphql-advanced` package exposes a single function, which is a constructor for a `dataProvider` based on a GraphQL endpoint. When executed, this function calls the GraphQL endpoint, running an [introspection](https://graphql.org/learn/introspection/) query. It uses the result of this query (the GraphQL schema) to automatically configure the `dataProvider` accordingly.
+The `@moonlight-labs/ra-data-graphql-advanced` package exposes a single function, which is a constructor for a `dataProvider` based on a GraphQL endpoint. When executed, this function calls the GraphQL endpoint, running an [introspection](https://graphql.org/learn/introspection/) query. It uses the result of this query (the GraphQL schema) to automatically configure the `dataProvider` accordingly.
 
 ```jsx
 // in App.js
 import React from 'react';
 import { Component } from 'react';
-import buildGraphQLProvider from 'ra-data-graphql-advanced';
+import buildGraphQLProvider from '@moonlight-labs/ra-data-graphql-advanced';
 import { Admin, Resource } from 'react-admin';
 
 import { PostCreate, PostEdit, PostList } from './posts';
@@ -61,7 +61,7 @@ export default App;
 
 ## Expected GraphQL Schema
 
-The `ra-data-graphql-advanced` function works against GraphQL servers that respect a certain GraphQL grammar. For instance, to handle all the actions on a `Post` resource, the GraphQL endpoint should support the following schema:
+The `@moonlight-labs/ra-data-graphql-advanced` function works against GraphQL servers that respect a certain GraphQL grammar. For instance, to handle all the actions on a `Post` resource, the GraphQL endpoint should support the following schema:
 
 ```gql
 type Query {
@@ -137,7 +137,7 @@ The default behavior might not be optimized especially when dealing with referen
 
 ```js
 // in src/dataProvider.js
-import buildGraphQLProvider, { buildQuery } from 'ra-data-graphql-advanced';
+import buildGraphQLProvider, { buildQuery } from '@moonlight-labs/ra-data-graphql-advanced';
 
 const myBuildQuery = introspection => (fetchType, resource, params) => {
     const builtQuery = buildQuery(introspection)(fetchType, resource, params);
