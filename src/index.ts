@@ -4,6 +4,7 @@ import { DataProvider, Identifier, GET_LIST, GET_ONE, GET_MANY, GET_MANY_REFEREN
 import pluralize from 'pluralize';
 
 import buildQuery from './buildQuery';
+import { buildRealtimeDataProviderMethods } from './realtime'
 
 const camelToSnake = (str: string) => {
     const pattern = /[A-Z]/g;
@@ -61,7 +62,7 @@ export default (
         }, 
         customOptions
     )
-    
+
     return buildDataProvider(dataProviderParams).then(
         defaultDataProvider => {
             return {
@@ -89,6 +90,7 @@ export default (
                         return { data };
                     });
                 },
+                ...(dataProviderParams.client ? buildRealtimeDataProviderMethods(dataProviderParams.client, fieldNamingConvention) : {}), // default build client from ra-data-graphql isn't provided so only support this if custom client provided for now
                 ...(dataProviderExtensions || {})
             };
         }
