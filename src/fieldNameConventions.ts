@@ -14,6 +14,8 @@ import { IntrospectedResource } from 'ra-data-graphql';
 
 import pluralize from 'pluralize';
 
+import { SUBSCRIBE_LIST, SUBSCRIBE_ONE } from './extensions/realtime';
+
 // currently only support 2 naming conventions (CAMEL is default)
 export enum FieldNameConventionEnum {
     CAMEL = 'camel',
@@ -78,7 +80,9 @@ const camelActionToFieldMap = {
     [UPDATE]: resource => `update${resource.name}`,
     [UPDATE_MANY]: resource => `update${pluralize(resource.name)}`,
     [DELETE]: resource => `delete${resource.name}`,
-    [DELETE_MANY]: resource => `delete${pluralize(resource.name)}`
+    [DELETE_MANY]: resource => `delete${pluralize(resource.name)}`,
+    [SUBSCRIBE_LIST]: resource => `all${pluralize(resource.name)}`,
+    [SUBSCRIBE_ONE]: resource => resource.name
 };
 
 const listQueryToMetaCamel = (listQuery: string) => `_${listQuery}Meta`;
@@ -99,7 +103,10 @@ const snakeActionToFieldMap = {
     [UPDATE]: resource => `update_${strWithSnakeConvention(resource.name)}`,
     [UPDATE_MANY]: resource => `update_${pluralize(strWithSnakeConvention(resource.name))}`,
     [DELETE]: resource => `delete_${strWithSnakeConvention(resource.name)}`,
-    [DELETE_MANY]: resource => `delete_${pluralize(strWithSnakeConvention(resource.name))}`
+    [DELETE_MANY]: resource => `delete_${pluralize(strWithSnakeConvention(resource.name))}`,
+    [SUBSCRIBE_LIST]: resource =>
+        `all_${pluralize(strWithSnakeConvention(resource.name))}`,
+    [SUBSCRIBE_ONE]: resource => resource.name
 };
 
 const listQueryToMetaSnake = (listQuery: string) =>

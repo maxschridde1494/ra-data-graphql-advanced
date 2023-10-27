@@ -107,14 +107,12 @@ export type DataProviderOptions = Omit<Options, 'buildQuery'> & {
 };
 
 export default (options: DataProviderOptions = {}): Promise<DataProvider> => {
-    console.log('root options', options)
     const {
         bulkActionsEnabled = false,
         extensions = [],
         fieldNameConvention = FieldNameConventionEnum.CAMEL,
         ...customOptions
     } = options;
-    console.log('root fieldNameConvention', fieldNameConvention)
 
     const defaultOptions = {
         ...baseDefaultOptions,
@@ -128,11 +126,11 @@ export default (options: DataProviderOptions = {}): Promise<DataProvider> => {
     if (dPOptions.introspection?.operationNames) {
         let operationNames = dPOptions.introspection.operationNames;
 
-        extensions.forEach(({ introspectionOperationNames }) => {
-            if (introspectionOperationNames)
+        extensions.forEach(({ introspectionOperationNamesFactory }) => {
+            if (introspectionOperationNamesFactory)
                 operationNames = merge(
                     operationNames,
-                    introspectionOperationNames
+                    introspectionOperationNamesFactory(fieldNameConvention)
                 );
         });
 
@@ -189,9 +187,9 @@ export default (options: DataProviderOptions = {}): Promise<DataProvider> => {
                       },
                   }),
             ...extensions.reduce(
-                (acc, { methodFactory, factoryArgs = [] }) => ({
+                (acc, { methodFactory, factoryArgs = {} }) => ({
                     ...acc,
-                    ...(factoryArgs.length > 0 ? methodFactory(defaultDataProvider, ...factoryArgs) : methodFactory(defaultDataProvider))
+                    ...methodFactory({ client: dPOptions.client, dataProvider: defaultDataProvider, fieldNameConvention, ...factoryArgs}) 
                 }),
                 {}
             ),

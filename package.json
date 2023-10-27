@@ -1,6 +1,6 @@
 {
     "name": "@moonlight-labs/ra-data-graphql-advanced",
-    "version": "4.9.4",
+    "version": "4.9.7",
     "description": "A GraphQL advanced data provider for react-admin",
     "type": "module",
     "files": [

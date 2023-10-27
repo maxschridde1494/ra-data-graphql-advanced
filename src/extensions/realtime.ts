@@ -1,26 +1,24 @@
 import { OperationVariables, SubscriptionOptions, gql } from '@apollo/client';
 
-import pluralize from 'pluralize';
-
 import { DataProviderExtension } from '.';
 import { DataProvider } from 'ra-core';
+import { FieldNameConventions, FieldNameConventionEnum } from '../fieldNameConventions';
 
 // Below is based off @react-admin/ra-realtime expectations
 
 export const SUBSCRIBE_LIST = 'SUBSCRIBE_LIST';
 export const SUBSCRIBE_ONE = 'SUBSCRIBE_ONE';
 
-const resourceToSubscribeList = (resource: string) =>
-    `all${pluralize(resource)}`;
-const resourceToSubscribeOne = (resource: string) => resource;
-
-const introspectionOperationNames = {
-    [SUBSCRIBE_LIST]: resource => resourceToSubscribeList(resource.name),
-    [SUBSCRIBE_ONE]: resource => resourceToSubscribeOne(resource.name),
-};
+const introspectionOperationNamesFactory = (fieldNameConvention: FieldNameConventionEnum = FieldNameConventionEnum.CAMEL) => ({
+    [SUBSCRIBE_LIST]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[SUBSCRIBE_LIST](resource),
+    [SUBSCRIBE_ONE]: resource =>
+        FieldNameConventions[fieldNameConvention].resourceActionToField[SUBSCRIBE_ONE](resource),
+});
 
 export const topicToGQLSubscribe = (
-    topic: string
+    topic: string,
+    fieldNameConvention: FieldNameConventionEnum = FieldNameConventionEnum.CAMEL
 ): SubscriptionOptions<OperationVariables, any> & { queryName: string } => {
     // Two possible topic patterns (from react admin)
     //    1. resource/${resource}
@@ -39,7 +37,7 @@ export const topicToGQLSubscribe = (
     if (raCRUDTopic.length === 2) {
         // list subscription
 
-        queryName = resourceToSubscribeList(resource);
+        queryName = FieldNameConventions[fieldNameConvention].resourceActionToField[SUBSCRIBE_LIST]({ name: resource});
 
         query = gql`
       subscription ${queryName} {
@@ -51,7 +49,7 @@ export const topicToGQLSubscribe = (
     `;
     } else {
         // single resource subscription
-        queryName = resourceToSubscribeOne(resource);
+        queryName = FieldNameConventions[fieldNameConvention].resourceActionToField[SUBSCRIBE_ONE]({ name: resource});
 
         query = gql`
       subscription ${queryName}($id: ID!) {
@@ -78,15 +76,22 @@ type Subscription = {
     subscriptionCallback: any;
 };
 
-const methodFactory = (
+const methodFactory = ({
+    dataProvider,
+    client,
+    fieldNameConvention = FieldNameConventionEnum.CAMEL,
+    subscriptionStore = []
+}: {
     dataProvider: DataProvider,
-    client: any,
-    subscriptionStore: Subscription[] = []
-) => {
+    client?: any,
+    fieldNameConvention?: FieldNameConventionEnum,
+    subscriptionStore?: Subscription[]
+}) => {
     return {
         subscribe: async (topic: string, subscriptionCallback: any) => {
             const { queryName, ...subscribeOptions } = topicToGQLSubscribe(
-                topic
+                topic,
+                fieldNameConvention
             );
             const subscription = (client || dataProvider.client)
                 .subscribe(subscribeOptions)
@@ -122,5 +127,5 @@ const methodFactory = (
 
 export const RealtimeExtension: DataProviderExtension = {
     methodFactory,
-    introspectionOperationNames,
+    introspectionOperationNamesFactory,
 };
