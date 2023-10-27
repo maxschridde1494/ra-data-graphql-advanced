@@ -1,5 +1,6 @@
 import { gql } from '@apollo/client';
 import { buildQueryFactory } from './buildQuery';
+import { FieldNameConventionEnum } from '../dist/cjs/fieldNameConventions';
 
 describe('buildQuery', () => {
     const queryType = 'query_type';
@@ -11,6 +12,8 @@ describe('buildQuery', () => {
     const introspectionResults = {
         resources: [resource],
     };
+
+    const defaultFieldName = FieldNameConventionEnum.CAMEL;
 
     it('throws an error if resource is unknown', () => {
         expect(() =>
@@ -60,9 +63,13 @@ describe('buildQuery', () => {
         });
 
         expect(buildVariablesFactory).toHaveBeenCalledWith(
-            introspectionResults
+            introspectionResults,
+            defaultFieldName
         );
-        expect(buildGqlQueryFactory).toHaveBeenCalledWith(introspectionResults);
+        expect(buildGqlQueryFactory).toHaveBeenCalledWith(
+            introspectionResults,
+            defaultFieldName
+        );
         expect(getResponseParserFactory).toHaveBeenCalledWith(
             introspectionResults
         );

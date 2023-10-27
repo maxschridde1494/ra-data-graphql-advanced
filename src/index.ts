@@ -1,98 +1,200 @@
 import merge from 'lodash/merge';
-import buildDataProvider, { BuildQueryFactory, Options, introspectSchema, IntrospectionOptions, IntrospectionResult } from 'ra-data-graphql';
-import { DataProvider, Identifier, GET_LIST, GET_ONE, GET_MANY, GET_MANY_REFERENCE, CREATE, UPDATE, DELETE, DELETE_MANY } from 'ra-core';
+import buildDataProvider, {
+    BuildQueryFactory,
+    Options,
+    introspectSchema,
+    IntrospectionOptions,
+    IntrospectionResult,
+} from 'ra-data-graphql';
+import {
+    DataProvider,
+    Identifier,
+    DELETE_MANY,
+    GET_LIST,
+    GET_ONE,
+    GET_MANY,
+    GET_MANY_REFERENCE,
+    CREATE,
+    UPDATE,
+    DELETE,
+    UPDATE_MANY,
+} from 'ra-core';
 import pluralize from 'pluralize';
 
-import buildQuery from './buildQuery';
-import { buildRealtimeDataProviderMethods } from './realtime'
+import defaultBuildQuery from './buildQuery';
+import {
+    FieldNameConventions,
+    FieldNameConventionEnum,
+} from './fieldNameConventions';
 
-const camelToSnake = (str: string) => {
-    const pattern = /[A-Z]/g;
-    const matches = str.match(pattern);
+import { DataProviderExtension, DataProviderExtensions } from './extensions';
 
-    if (matches.length === 0) return str;
-    if (matches.length === 1 && matches[0] === str[0]) return str.toLowerCase();
-    return str[0].toLowerCase() + str.slice(1).replace(pattern, (letter) => `_${letter.toLowerCase()}`)
-}
+export { FieldNameConventionEnum };
 
-export type FieldNamingConventions = 'camel' | 'snake';
+export const buildQuery = defaultBuildQuery;
+export { buildQueryFactory } from './buildQuery';
+export { default as buildGqlQuery } from './buildGqlQuery';
+export { default as buildVariables } from './buildVariables';
+export { default as getResponseParser } from './getResponseParser';
 
-// NOTE assumes str is in camel case to start
-export const strWithNameConvention = (str: string, fieldNamingConvention: FieldNamingConventions = 'camel') => fieldNamingConvention === 'snake' ? camelToSnake(str) : str;
-
-export const resourceNameWithNameConvention = (resource: string, fieldNamingConvention: FieldNamingConventions = 'camel') => fieldNamingConvention === 'snake' ? `_${camelToSnake(resource)}` : resource;
-
-const buildIntrospection = (fieldNamingConvention: FieldNamingConventions = 'camel') => {
+const buildIntrospection = (
+    fieldNameConvention: FieldNameConventionEnum = FieldNameConventionEnum.CAMEL
+) => {
     const introspection = {
         operationNames: {
-            [GET_LIST]: resource => `all${pluralize(resourceNameWithNameConvention(resource.name, fieldNamingConvention))}`,
-            [GET_ONE]: resource => `${resource.name}`,
-            [GET_MANY]: resource => `all${pluralize(resourceNameWithNameConvention(resource.name, fieldNamingConvention))}`,
-            [GET_MANY_REFERENCE]: resource => `all${pluralize(resourceNameWithNameConvention(resource.name, fieldNamingConvention))}`,
-            [CREATE]: resource => `create${resourceNameWithNameConvention(resource.name, fieldNamingConvention)}`,
-            [UPDATE]: resource => `update${resourceNameWithNameConvention(resource.name, fieldNamingConvention)}`,
-            [DELETE]: resource => `delete${resourceNameWithNameConvention(resource.name, fieldNamingConvention)}`,
-            [DELETE_MANY]: resource =>`delete${pluralize(resourceNameWithNameConvention(resource.name, fieldNamingConvention))}`
+            [GET_LIST]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[GET_LIST](resource),
+            [GET_ONE]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[GET_ONE](resource),
+            [GET_MANY]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[GET_MANY](resource),
+            [GET_MANY_REFERENCE]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[GET_MANY_REFERENCE](
+                    resource
+                ),
+            [CREATE]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[CREATE](resource),
+            [UPDATE]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[UPDATE](resource),
+            [DELETE]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[DELETE](resource),
+            [DELETE_MANY]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[DELETE_MANY](
+                    resource
+                ),
+            [UPDATE_MANY]: resource =>
+                FieldNameConventions[fieldNameConvention].resourceActionToField[UPDATE_MANY](
+                    resource
+                ),
         },
         exclude: undefined,
         include: undefined,
+    };
+
+    return introspection;
+};
+
+const baseDefaultOptions = {
+    resolveIntrospection: introspectSchema,
+    introspection: {
+        operationNames: {
+            [GET_LIST]: resource => `all${pluralize(resource.name)}`,
+            [GET_ONE]: resource => `${resource.name}`,
+            [GET_MANY]: resource => `all${pluralize(resource.name)}`,
+            [GET_MANY_REFERENCE]: resource => `all${pluralize(resource.name)}`,
+            [CREATE]: resource => `create${resource.name}`,
+            [UPDATE]: resource => `update${resource.name}`,
+            [DELETE]: resource => `delete${resource.name}`,
+        },
+        exclude: undefined,
+        include: undefined,
+    },
+};
+
+export {
+    introspectSchema,
+    IntrospectionOptions,
+    buildIntrospection,
+    DataProviderExtensions,
+};
+
+export type DataProviderOptions = Omit<Options, 'buildQuery'> & {
+    buildQuery?: BuildQueryFactory;
+    bulkActionsEnabled?: boolean;
+    extensions?: DataProviderExtension[];
+    fieldNameConvention?: FieldNameConventionEnum;
+    resolveIntrospection?: typeof introspectSchema;
+};
+
+export default (options: DataProviderOptions = {}): Promise<DataProvider> => {
+    console.log('root options', options)
+    const {
+        bulkActionsEnabled = false,
+        extensions = [],
+        fieldNameConvention = FieldNameConventionEnum.CAMEL,
+        ...customOptions
+    } = options;
+    console.log('root fieldNameConvention', fieldNameConvention)
+
+    const defaultOptions = {
+        ...baseDefaultOptions,
+        buildQuery: (introspectionResults: IntrospectionResult) =>
+            defaultBuildQuery(introspectionResults, fieldNameConvention),
+        introspection: buildIntrospection(fieldNameConvention),
+    };
+
+    const dPOptions = merge({}, defaultOptions, customOptions);
+
+    if (dPOptions.introspection?.operationNames) {
+        let operationNames = dPOptions.introspection.operationNames;
+
+        extensions.forEach(({ introspectionOperationNames }) => {
+            if (introspectionOperationNames)
+                operationNames = merge(
+                    operationNames,
+                    introspectionOperationNames
+                );
+        });
+
+        dPOptions.introspection.operationNames = operationNames;
     }
 
-    return introspection
-}
+    return buildDataProvider(dPOptions).then(defaultDataProvider => {
+        return {
+            ...defaultDataProvider,
+            // This provider defaults to sending multiple DELETE requests for DELETE_MANY
+            // and multiple UPDATE requests for UPDATE_MANY unless bulk actions are enabled
+            // This can be optimized using the apollo-link-batch-http link
+            ...(bulkActionsEnabled
+                ? {}
+                : {
+                      deleteMany: (resource, params) => {
+                          const { ids, ...otherParams } = params;
+                          return Promise.all(
+                              ids.map(id =>
+                                  defaultDataProvider.delete(resource, {
+                                      id,
+                                      previousData: null,
+                                      ...otherParams,
+                                  })
+                              )
+                          ).then(results => {
+                              const data = results.reduce<Identifier[]>(
+                                  (acc, { data }) => [...acc, data.id],
+                                  []
+                              );
 
-export { buildQuery, introspectSchema, IntrospectionOptions, buildIntrospection }
+                              return { data };
+                          });
+                      },
+                      updateMany: (resource, params) => {
+                          const { ids, data, ...otherParams } = params;
+                          return Promise.all(
+                              ids.map(id =>
+                                  defaultDataProvider.update(resource, {
+                                      id,
+                                      data: data,
+                                      previousData: null,
+                                      ...otherParams,
+                                  })
+                              )
+                          ).then(results => {
+                              const data = results.reduce<Identifier[]>(
+                                  (acc, { data }) => [...acc, data.id],
+                                  []
+                              );
 
-export type DataProviderOptions = Omit<Options, 'buildQuery'> & { 
-    buildQuery?: BuildQueryFactory; 
-    dataProviderExtensions?: { [key: string]: any; }; // https://github.com/marmelab/react-admin/blob/master/packages/ra-core/src/types.ts#L136
-    fieldNamingConvention?: FieldNamingConventions;
-    resolveIntrospection?: typeof introspectSchema;
-}
-
-export default (
-    options: DataProviderOptions
-): Promise<DataProvider> => {
-    const { dataProviderExtensions, fieldNamingConvention, ...customOptions } = options;
-    const dataProviderParams = merge(
-        {}, 
-        { 
-            buildQuery: (introspectionResults: IntrospectionResult) => buildQuery(introspectionResults, fieldNamingConvention), 
-            introspection: buildIntrospection(fieldNamingConvention) 
-        }, 
-        customOptions
-    )
-
-    return buildDataProvider(dataProviderParams).then(
-        defaultDataProvider => {
-            return {
-                ...defaultDataProvider,
-                // TODO support bulk updates
-                // This provider does not support multiple updates so instead we send multiple UPDATE requests
-                // This can be optimized using the apollo-link-batch-http link
-                updateMany: (resource, params) => {
-                    const { ids, data, ...otherParams } = params;
-                    return Promise.all(
-                        ids.map(id =>
-                            defaultDataProvider.update(resource, {
-                                id,
-                                data: data,
-                                previousData: null,
-                                ...otherParams,
-                            })
-                        )
-                    ).then(results => {
-                        const data = results.reduce<Identifier[]>(
-                            (acc, { data }) => [...acc, data.id],
-                            []
-                        );
-
-                        return { data };
-                    });
-                },
-                ...(dataProviderParams.client ? buildRealtimeDataProviderMethods(dataProviderParams.client, fieldNamingConvention) : {}), // default build client from ra-data-graphql isn't provided so only support this if custom client provided for now
-                ...(dataProviderExtensions || {})
-            };
-        }
-    );
+                              return { data };
+                          });
+                      },
+                  }),
+            ...extensions.reduce(
+                (acc, { methodFactory, factoryArgs = [] }) => ({
+                    ...acc,
+                    ...(factoryArgs.length > 0 ? methodFactory(defaultDataProvider, ...factoryArgs) : methodFactory(defaultDataProvider))
+                }),
+                {}
+            ),
+        };
+    });
 };
