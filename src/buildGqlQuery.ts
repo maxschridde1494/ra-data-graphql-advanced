@@ -32,8 +32,8 @@ import {
 
 const defaultFieldsResolutionTypes = [TypeKind.SCALAR]; // unless sparse fields are specified, default fields requested in queries / mutations will be scalars only
 
-type SparseFields = (string | { [k: string]: SparseFields })[];
-type ExpandedSparseFields = { linkedType?: string; fields: SparseFields }[];
+type RequestedFields = (string | { [k: string]: RequestedFields })[];
+type ExpandedRequestedFields = { linkedType?: string; fields: RequestedFields }[];
 
 function getType(fieldType) {
     if (fieldType.ofType == null) return fieldType.kind;
@@ -41,45 +41,68 @@ function getType(fieldType) {
     return getType(fieldType.ofType);
 }
 
-function processSparseFields(
+function expandRequestedFields(fields?: RequestedFields) : ExpandedRequestedFields {
+    if (!fields) return [];
+
+    return fields.map(f => {
+        if (typeof f == 'string') return { fields: [f] };
+
+        const [linkedType, linkedRequestedFields] = Object.entries(f)[0];
+
+        return { linkedType, fields: linkedRequestedFields };
+    });
+}
+
+function filterPermittedRequestedFields(resourceFNames: string[], requestedfields: ExpandedRequestedFields): ExpandedRequestedFields {
+    return requestedfields.filter(rF =>
+        resourceFNames.includes((rF.linkedType || rF.fields[0]) as string)
+    );
+}
+
+function processRequestedFields(
     resourceFields: readonly IntrospectionField[],
-    sparseFields: SparseFields
+    sparseFields?: RequestedFields,
+    extraFields?: RequestedFields
 ): {
     fields: readonly IntrospectionField[];
-    linkedSparseFields: ExpandedSparseFields;
+    linkedRequestedFields: ExpandedRequestedFields;
 } {
-    if (!sparseFields || sparseFields.length == 0)
+    const fieldsRequested = sparseFields || extraFields && (sparseFields?.length > 0 || extraFields?.length > 0)
+    const defaultResolutionFields = resourceFields.filter(field =>
+        defaultFieldsResolutionTypes.includes(getType(field.type))
+    )
+
+    if (!fieldsRequested) // default (which is scalar resource fields) if requested fields not specified
         return {
-            fields: resourceFields.filter(field =>
-                defaultFieldsResolutionTypes.includes(getType(field.type))
-            ),
-            linkedSparseFields: [],
-        }; // default (which is scalar resource fields) if sparse fields not specified
+            fields: defaultResolutionFields,
+            linkedRequestedFields: [],
+        };
 
     const resourceFNames = resourceFields.map(f => f.name);
+    const defaultFNames = defaultResolutionFields.map(f => f.name);
+    
+    let fields: readonly IntrospectionField[] = [];
+    let linkedRequestedFields: ExpandedRequestedFields = []; // requested fields to be used for linked resources / types
+    
+    if (extraFields?.length > 0) {
+        // take precedence over sparse fields
+        const expandedExtraFields = expandRequestedFields(extraFields);
+        const permittedExtraFields = filterPermittedRequestedFields(resourceFNames, expandedExtraFields);
+        const extraFNames = permittedExtraFields.map(eF => eF.linkedType || eF.fields[0]);
 
-    const expandedSparseFields: ExpandedSparseFields = sparseFields.map(sP => {
-        if (typeof sP == 'string') return { fields: [sP] };
+        fields = [...defaultResolutionFields, ...resourceFields.filter(rF => extraFNames.includes(rF.name) && !defaultFNames.includes(rF.name))];
+        linkedRequestedFields = permittedExtraFields.filter(sF => !!sF.linkedType);
+    } else if (sparseFields?.length > 0) {
+        // sparse fields only
+        const expandedSparseFields = expandRequestedFields(sparseFields);
+        const permittedSparseFields = filterPermittedRequestedFields(resourceFNames, expandedSparseFields);
+        const sparseFNames = permittedSparseFields.map(sF => sF.linkedType || sF.fields[0]);
 
-        const [linkedType, linkedSparseFields] = Object.entries(sP)[0];
+        fields = resourceFields.filter(rF => sparseFNames.includes(rF.name));
+        linkedRequestedFields = permittedSparseFields.filter(sF => !!sF.linkedType);
+    }
 
-        return { linkedType, fields: linkedSparseFields };
-    });
-
-    const permittedSparseFields = expandedSparseFields.filter(sF =>
-        resourceFNames.includes((sF.linkedType || sF.fields[0]) as string)
-    ); // ensure the requested fields are available
-
-    const sparseFNames = permittedSparseFields.map(
-        sF => sF.linkedType || sF.fields[0]
-    );
-
-    const fields = resourceFields.filter(rF => sparseFNames.includes(rF.name));
-    const linkedSparseFields = permittedSparseFields.filter(
-        sF => !!sF.linkedType
-    ); // sparse fields to be used for linked resources / types
-
-    return { fields, linkedSparseFields };
+    return { fields, linkedRequestedFields };
 }
 
 export default (
@@ -92,12 +115,16 @@ export default (
     variables: any
 ) => {
     let { sortField, sortOrder, ...metaVariables } = variables;
-    const sparseFields = metaVariables.meta?.sparseFields;
+
+    const sparseFields = metaVariables.meta?.[FieldNameConventions[fieldNameConvention].strWithConvention('sparseFields')];
     if (sparseFields) delete metaVariables.meta.sparseFields;
+    const extraFields = metaVariables.meta?.[FieldNameConventions[fieldNameConvention].strWithConvention('extraFields')];
+    if (extraFields) delete metaVariables.meta.extraFields;
 
     const fields = buildFields(introspectionResults)(
         resource.type.fields,
-        sparseFields
+        sparseFields,
+        extraFields
     );
     const apolloArgs = buildApolloArgs(
         queryType,
@@ -107,8 +134,6 @@ export default (
     const args = buildArgs(queryType, variables, fieldNameConvention);
     const metaArgs = buildArgs(queryType, metaVariables, fieldNameConvention);
     
-    console.log('buildGqlQuery fieldNameConvention', fieldNameConvention)
-
     if (
         raFetchMethod === GET_LIST ||
         raFetchMethod === GET_MANY ||
@@ -206,10 +231,11 @@ export default (
 export const buildFields = (
     introspectionResults: IntrospectionResult,
     paths = []
-) => (fields: readonly IntrospectionField[], sparseFields?: SparseFields) => {
-    const { fields: requestedFields, linkedSparseFields } = processSparseFields(
+) => (fields: readonly IntrospectionField[], sparseFields?: RequestedFields, extraFields?: RequestedFields) => {
+    const { fields: requestedFields, linkedRequestedFields } = processRequestedFields(
         fields,
-        sparseFields
+        sparseFields,
+        extraFields
     );
 
     return requestedFields.reduce((acc, field) => {
@@ -228,7 +254,9 @@ export const buildFields = (
         );
 
         if (linkedResource) {
-            const linkedResourceSparseFields = linkedSparseFields.find(
+            // NOTE: linkedResource fields will always be sparse fields (even if defined as extra)
+            // because the default is only ID fields
+            const linkedResourceSparseFields = linkedRequestedFields.find(
                 lSP => lSP.linkedType == field.name
             )?.fields || ['id']; // default to id if no sparse fields specified for linked resource
 
@@ -271,9 +299,9 @@ export const buildFields = (
                             linkedType.name,
                         ])(
                             (linkedType as IntrospectionObjectType).fields,
-                            linkedSparseFields.find(
+                            linkedRequestedFields.find(
                                 lSP => lSP.linkedType == field.name
-                            )?.fields
+                            )?.fields // NOTE: treat requested fields always as sparse fields for linkedType (treat same as linkedResource)
                         ),
                     ])
                 ),
