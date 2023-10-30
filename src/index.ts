@@ -191,8 +191,9 @@ export default (options: DataProviderOptions = {}): Promise<DataProvider> => {
                     ...acc,
                     ...methodFactory({ client: dPOptions.client, dataProvider: defaultDataProvider, fieldNameConvention, ...factoryArgs}) 
                 }),
-                {}
+                {},
             ),
+            client: dPOptions.client,
         };
     });
 };
