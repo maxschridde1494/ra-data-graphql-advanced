@@ -116,10 +116,13 @@ export default (
 ) => {
     let { sortField, sortOrder, ...metaVariables } = variables;
 
-    const sparseFields = metaVariables.meta?.[FieldNameConventions[fieldNameConvention].strWithConvention('sparseFields')];
-    if (sparseFields) delete metaVariables.meta.sparseFields;
-    const extraFields = metaVariables.meta?.[FieldNameConventions[fieldNameConvention].strWithConvention('extraFields')];
-    if (extraFields) delete metaVariables.meta.extraFields;
+    const sparseFieldsKey = FieldNameConventions[fieldNameConvention].strWithConvention('sparseFields')
+    const extraFieldsKey = FieldNameConventions[fieldNameConvention].strWithConvention('extraFields')
+    
+    const sparseFields = metaVariables.meta?.[sparseFieldsKey];
+    if (sparseFields) delete metaVariables.meta[sparseFieldsKey];
+    const extraFields = metaVariables.meta?.[extraFieldsKey];
+    if (extraFields) delete metaVariables.meta[extraFieldsKey];
 
     const fields = buildFields(introspectionResults)(
         resource.type.fields,
